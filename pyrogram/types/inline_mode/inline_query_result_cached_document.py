@@ -87,7 +87,7 @@ class InlineQueryResultCachedDocument(InlineQueryResult):
         self.input_message_content = input_message_content
 
     async def write(self, client: "pyrogram.Client"):
-        document = utils.get_input_file_from_file_id(self.file_id)
+        document = utils.get_input_media_from_file_id(self.file_id)
 
         message, entities = (await utils.parse_text_entities(
             client, self.caption, self.parse_mode, self.caption_entities
