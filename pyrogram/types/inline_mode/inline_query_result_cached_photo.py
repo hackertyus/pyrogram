@@ -1,5 +1,5 @@
 #  Pyrogram - Telegram MTProto API Client Library for Python
-#  Copyright (C) 2017-2020 Dan <https://github.com/delivrance>
+#  Copyright (C) 2017-2021 Dan <https://github.com/delivrance>
 #
 #  This file is part of Pyrogram.
 #
@@ -16,20 +16,21 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Union
+from typing import Optional, List
 
-from pyrogram import raw
-from pyrogram import utils
-from pyrogram import types
-from pyrogram.parser import Parser
+import pyrogram
+from pyrogram import raw, types, utils
+
 from pyrogram.file_id import FileType
 from .inline_query_result import InlineQueryResult
 
 
 class InlineQueryResultCachedPhoto(InlineQueryResult):
     """Link to a photo stored on the Telegram servers.
+    
     By default, this photo will be sent by the user with an optional caption. 
     Alternatively, you can use input_message_content to send a message with the specified content instead of the photo.
+    
     Parameters:
         file_id (``str``):
             Pass a file_id as string to send a media that exists on the Telegram servers.
@@ -48,8 +49,13 @@ class InlineQueryResultCachedPhoto(InlineQueryResult):
             Pass "markdown" or "md" to enable Markdown-style parsing only.
             Pass "html" to enable HTML-style parsing only.
             Pass None to completely disable style parsing.
+            
+        caption_entities (List of :obj:`~pyrogram.types.MessageEntity`):
+                List of special entities that appear in the caption, which can be specified instead of *parse_mode*.
+                
         reply_markup (:obj:`~pyrogram.types.InlineKeyboardMarkup`, *optional*):
             Inline keyboard attached to the message.
+            
         input_message_content (:obj:`~pyrogram.types.InputMessageContent`):
             Content of the message to be sent.
     """
@@ -60,7 +66,8 @@ class InlineQueryResultCachedPhoto(InlineQueryResult):
         file_ref: str = None,
         id: str = None,
         caption: str = "",
-        parse_mode: Union[str, None] = object,
+        parse_mode: Optional[str] = object,
+        caption_entities: List["types.MessageEntity"] = None,
         reply_markup: "types.InlineKeyboardMarkup" = None,
         input_message_content: "types.InputMessageContent" = None
     ):
@@ -70,10 +77,11 @@ class InlineQueryResultCachedPhoto(InlineQueryResult):
         self.file_ref = file_ref
         self.caption = caption
         self.parse_mode = parse_mode
+        self.caption_entities = caption_entities
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
 
-    async def write(self):
+    async def write(self, client: "pyrogram.Client"):
         photo = utils.get_input_file_from_file_id(self.file_id, FileType.PHOTO)
 
         return raw.types.InputBotInlineResultPhoto(
@@ -81,11 +89,12 @@ class InlineQueryResultCachedPhoto(InlineQueryResult):
             type=self.type,
             photo=photo,
             send_message=(
-                await self.input_message_content.write(self.reply_markup)
+                await self.input_message_content.write(client, self.reply_markup)
                 if self.input_message_content
                 else raw.types.InputBotInlineMessageMediaAuto(
-                    reply_markup=self.reply_markup.write() if self.reply_markup else None,
-                    **await (Parser(None)).parse(self.caption, self.parse_mode)
+                    reply_markup=await self.reply_markup.write(client) if self.reply_markup else None,
+                    message=message,
+                    entities=entities
                 )
             )
         )
